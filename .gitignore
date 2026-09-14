@@ -1,0 +1,7 @@
+node_modules/
+*.log
+.DS_Store
+# Local runtime state must never be committed.
+board.json
+source.json
+preferences.json
