@@ -138,11 +138,10 @@ export async function getBoardHandler(
 async function finishMutation(
   dataDir: string,
   board: BoardFile,
-  input: { projectId?: string; includeArchived?: boolean },
   context: PluginHandlerContext,
 ): Promise<MutationResult> {
   writeBoard(dataDir, board);
-  return { success: true, snapshot: await buildSnapshot(input, context) };
+  return { success: true, snapshot: await buildSnapshot({ includeArchived: true }, context) };
 }
 
 export async function createTaskHandler(
@@ -190,7 +189,7 @@ export async function createTaskHandler(
     ...board,
     tasks: [task, ...board.tasks],
   };
-  return finishMutation(dataDir, nextBoard, { projectId: input.projectId }, context);
+  return finishMutation(dataDir, nextBoard, context);
 }
 
 export async function updateTaskHandler(
@@ -243,7 +242,7 @@ export async function updateTaskHandler(
 
   const tasks = [...board.tasks];
   tasks[index] = updated;
-  return finishMutation(dataDir, { ...board, tasks }, {}, context);
+  return finishMutation(dataDir, { ...board, tasks }, context);
 }
 
 export async function deleteTaskHandler(
@@ -257,7 +256,7 @@ export async function deleteTaskHandler(
     return failure("That task is not on this board. External tasks are read-only.");
   }
   const tasks = board.tasks.filter((task) => task.id !== input.taskId);
-  return finishMutation(dataDir, { ...board, tasks }, {}, context);
+  return finishMutation(dataDir, { ...board, tasks }, context);
 }
 
 export async function searchTasksHandler(
@@ -327,7 +326,7 @@ export async function createProjectHandler(
 
   const project = createProjectRecord(name);
   const nextBoard: BoardFile = { ...board, projects: [...board.projects, project] };
-  return finishMutation(dataDir, nextBoard, { projectId: project.id }, context);
+  return finishMutation(dataDir, nextBoard, context);
 }
 
 export async function renameProjectHandler(
@@ -352,7 +351,7 @@ export async function renameProjectHandler(
   const projects = board.projects.map((candidate) =>
     candidate.id === project.id ? { ...candidate, name } : candidate,
   );
-  return finishMutation(dataDir, { ...board, projects }, { projectId: project.id }, context);
+  return finishMutation(dataDir, { ...board, projects }, context);
 }
 
 export async function deleteProjectHandler(
@@ -376,7 +375,7 @@ export async function deleteProjectHandler(
     projects: board.projects.filter((candidate) => candidate.id !== project.id),
     tasks: board.tasks.filter((task) => task.projectId !== project.id),
   };
-  return finishMutation(dataDir, nextBoard, {}, context);
+  return finishMutation(dataDir, nextBoard, context);
 }
 
 export async function setStagesHandler(
@@ -390,7 +389,7 @@ export async function setStagesHandler(
   if (nextBoard.stages.length === 0) {
     return failure("At least one stage is required.");
   }
-  const result = await finishMutation(dataDir, nextBoard, {}, context);
+  const result = await finishMutation(dataDir, nextBoard, context);
   if (result.success && renamed.size > 0 && result.snapshot) {
     const moves = Array.from(renamed, ([from, to]) => `${from} to ${to}`).join(", ");
     return { ...result, error: `Removed stages reassigned: ${moves}.` };
@@ -407,7 +406,7 @@ export async function setSourceHandler(
 
   if (!input.url) {
     writeSourceConfig(dataDir, { url: null, projectId: null });
-    return { success: true, snapshot: await buildSnapshot({}, context) };
+    return { success: true, snapshot: await buildSnapshot({ includeArchived: true }, context) };
   }
 
   const url = validateSourceUrl(input.url);
@@ -419,7 +418,7 @@ export async function setSourceHandler(
   }
 
   writeSourceConfig(dataDir, { url, projectId: input.projectId });
-  return { success: true, snapshot: await buildSnapshot({}, context) };
+  return { success: true, snapshot: await buildSnapshot({ includeArchived: true }, context) };
 }
 
 export async function getPreferencesHandler(): Promise<{

@@ -177,30 +177,36 @@ export async function fetchExternalTasks(
       requestUrl.searchParams.set("limit", String(PAGE_LIMIT));
       if (cursor) requestUrl.searchParams.set("cursor", cursor);
 
-      const response = await fetchImpl(requestUrl.toString(), {
-        method: "GET",
-        headers: { Accept: "application/json" },
-        signal: AbortSignal.timeout(REQUEST_TIMEOUT_MS),
-      });
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+      try {
+        const response = await fetchImpl(requestUrl.toString(), {
+          method: "GET",
+          headers: { Accept: "application/json" },
+          signal: controller.signal,
+        });
 
-      if (!response.ok) {
-        warnings.push(`${hostOf(validated)} responded with HTTP ${response.status}.`);
-        break;
-      }
+        if (!response.ok) {
+          warnings.push(`${hostOf(validated)} responded with HTTP ${response.status}.`);
+          break;
+        }
 
-      const payload = (await response.json()) as { records?: unknown[]; nextCursor?: unknown };
-      const records = Array.isArray(payload.records) ? payload.records : [];
-      for (const record of records) {
-        if (tasks.length >= MAX_RECORDS) break;
-        const task = normalizeExternalRecord(record, context, stageWarnings);
-        if (task) tasks.push(task);
-      }
+        const payload = (await response.json()) as { records?: unknown[]; nextCursor?: unknown };
+        const records = Array.isArray(payload.records) ? payload.records : [];
+        for (const record of records) {
+          if (tasks.length >= MAX_RECORDS) break;
+          const task = normalizeExternalRecord(record, context, stageWarnings);
+          if (task) tasks.push(task);
+        }
 
-      cursor = typeof payload.nextCursor === "string" && payload.nextCursor ? payload.nextCursor : null;
-      pages += 1;
-      if (pages >= maxPages) {
-        warnings.push(`Stopped after ${maxPages} pages.`);
-        break;
+        cursor = typeof payload.nextCursor === "string" && payload.nextCursor ? payload.nextCursor : null;
+        pages += 1;
+        if (pages >= maxPages) {
+          warnings.push(`Stopped after ${maxPages} pages.`);
+          break;
+        }
+      } finally {
+        clearTimeout(timer);
       }
     } while (cursor);
   } catch (error) {

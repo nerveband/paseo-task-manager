@@ -5,6 +5,7 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
+import { valid, validRange } from "semver";
 
 const ROOT = path.resolve(import.meta.dirname, "..");
 
@@ -20,9 +21,17 @@ if (pkg.name !== "paseo-task-manager") {
   process.exit(1);
 }
 
-if (!/^\d+\.\d+\.\d+/.test(pkg.version)) {
+if (valid(pkg.version) !== pkg.version) {
   console.error(`check-package: invalid semver "${pkg.version}"`);
   process.exit(1);
+}
+const lock = JSON.parse(readFileSync(path.join(ROOT, "package-lock.json"), "utf8"));
+if (lock.version !== pkg.version || lock.packages?.[""]?.version !== pkg.version || lock.name !== pkg.name || lock.packages?.[""]?.name !== pkg.name) {
+  throw new Error("Package and lockfile identity/version differ.");
+}
+const changelog = readFileSync(path.join(ROOT, "CHANGELOG.md"), "utf8");
+if (!changelog.split("\n").some(line => line.startsWith(`## [${pkg.version}] - `))) {
+  throw new Error("Current version is missing from CHANGELOG.md.");
 }
 
 const pluginJsonPath = path.join(ROOT, "paseo-plugin.json");
@@ -37,7 +46,7 @@ if (pluginJson.id !== "paseo-task-manager") {
   process.exit(1);
 }
 
-if (!pluginJson.requirements?.paseo) {
+if (!pluginJson.requirements?.paseo || !validRange(pluginJson.requirements.paseo)) {
   console.error("check-package: missing requirements.paseo in paseo-plugin.json");
   process.exit(1);
 }

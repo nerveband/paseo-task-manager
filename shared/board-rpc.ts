@@ -69,7 +69,7 @@ const taskFields = {
 };
 
 export const getBoardRpc = defineRpc({
-  name: "taskManager.getBoard",
+  name: "task-manager.get-board",
   input: z.object({
     projectId: z.string().optional(),
     includeArchived: z.boolean().optional().default(false),
@@ -78,7 +78,7 @@ export const getBoardRpc = defineRpc({
 });
 
 export const createTaskRpc = defineRpc({
-  name: "taskManager.createTask",
+  name: "task-manager.create-task",
   input: z.object({
     projectId: z.string().min(1),
     ...taskFields,
@@ -87,7 +87,7 @@ export const createTaskRpc = defineRpc({
 });
 
 export const updateTaskRpc = defineRpc({
-  name: "taskManager.updateTask",
+  name: "task-manager.update-task",
   input: z.object({
     taskId: z.string().min(1),
     ...taskFields,
@@ -100,13 +100,13 @@ export const updateTaskRpc = defineRpc({
 });
 
 export const deleteTaskRpc = defineRpc({
-  name: "taskManager.deleteTask",
+  name: "task-manager.delete-task",
   input: z.object({ taskId: z.string().min(1) }),
   output: MutationResultSchema,
 });
 
 export const searchTasksRpc = defineRpc({
-  name: "taskManager.searchTasks",
+  name: "task-manager.search-tasks",
   input: z.object({ query: z.string() }),
   output: z.object({
     items: z.array(
@@ -124,19 +124,19 @@ export const searchTasksRpc = defineRpc({
 });
 
 export const createProjectRpc = defineRpc({
-  name: "taskManager.createProject",
+  name: "task-manager.create-project",
   input: z.object({ name: z.string().min(1).max(60) }),
   output: MutationResultSchema,
 });
 
 export const renameProjectRpc = defineRpc({
-  name: "taskManager.renameProject",
+  name: "task-manager.rename-project",
   input: z.object({ projectId: z.string().min(1), name: z.string().min(1).max(60) }),
   output: MutationResultSchema,
 });
 
 export const deleteProjectRpc = defineRpc({
-  name: "taskManager.deleteProject",
+  name: "task-manager.delete-project",
   input: z.object({
     projectId: z.string().min(1),
     /** Deleting a project that still holds tasks requires this explicit choice. */
@@ -146,13 +146,13 @@ export const deleteProjectRpc = defineRpc({
 });
 
 export const setStagesRpc = defineRpc({
-  name: "taskManager.setStages",
+  name: "task-manager.set-stages",
   input: z.object({ stages: z.array(z.string()) }),
   output: MutationResultSchema,
 });
 
 export const setSourceRpc = defineRpc({
-  name: "taskManager.setSource",
+  name: "task-manager.set-source",
   input: z.object({
     /** null clears the external source and returns the board to local-only. */
     url: z.string().max(2048).nullable(),
@@ -163,7 +163,7 @@ export const setSourceRpc = defineRpc({
 });
 
 export const getPreferencesRpc = defineRpc({
-  name: "taskManager.getPreferences",
+  name: "task-manager.get-preferences",
   input: z.object({}),
   output: z.object({
     workspaceId: z.string().nullable(),
@@ -172,7 +172,7 @@ export const getPreferencesRpc = defineRpc({
 });
 
 export const setPreferencesRpc = defineRpc({
-  name: "taskManager.setPreferences",
+  name: "task-manager.set-preferences",
   input: z.object({
     workspaceId: z.string().nullable().optional(),
     provider: z.string().nullable().optional(),

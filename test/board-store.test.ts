@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -33,6 +33,26 @@ test("the data directory is explicit or follows the Paseo convention", () => {
   );
   const fallback = resolveDataDir({});
   assert.ok(fallback.endsWith(path.join(".paseo", "plugin-data", "paseo-task-manager")));
+});
+
+test("board, settings and recovery files remain owner-only", { skip: process.platform === "win32" }, () => {
+  withTempDataDir((dataDir) => {
+    chmodSync(dataDir, 0o755);
+    writeBoard(dataDir, emptyBoard());
+    writeSourceConfig(dataDir, { url: null, projectId: null });
+    writePreferences(dataDir, { workspaceId: null, provider: null });
+    assert.equal(statSync(dataDir).mode & 0o777, 0o700);
+    for (const name of readdirSync(dataDir)) {
+      assert.equal(statSync(path.join(dataDir, name)).mode & 0o777, 0o600);
+    }
+    const boardPath = path.join(dataDir, BOARD_FILE);
+    writeFileSync(boardPath, "{damaged");
+    chmodSync(boardPath, 0o644);
+    readBoard(dataDir);
+    const backup = readdirSync(dataDir).find((name) => name.startsWith("board.corrupt-"))!;
+    assert.equal(readFileSync(path.join(dataDir, backup), "utf8"), "{damaged");
+    assert.equal(statSync(path.join(dataDir, backup)).mode & 0o777, 0o600);
+  });
 });
 
 test("a board survives a write and read round trip", () => {

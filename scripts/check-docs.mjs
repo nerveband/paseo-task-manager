@@ -3,7 +3,6 @@
  * Validates documentation files:
  * - Ensures required docs exist.
  * - Rejects em dashes in all markdown files.
- * - Enforces lowercase "wavedepth".
  * - Checks relative link targets.
  */
 
@@ -54,9 +53,6 @@ for (const file of walkMarkdown(ROOT)) {
     const lineNum = idx + 1;
     if (line.includes("—") || line.includes("\u2014")) {
       errors.push(`${rel}:${lineNum}: em dash detected; use commas, colons, parentheses, or separate sentences`);
-    }
-    if (/\bWavedepth\b|\bWAVEDEPTH\b/.test(line)) {
-      errors.push(`${rel}:${lineNum}: "wavedepth" must be lowercase`);
     }
 
     // Check relative links

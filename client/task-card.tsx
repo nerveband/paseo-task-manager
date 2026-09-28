@@ -66,7 +66,6 @@ export function TaskCard({
               ? theme.colors.statusDanger
               : theme.colors.border,
           backgroundColor: theme.colors.surface0,
-          opacity: done ? 0.55 : 1,
         },
         headerRow: { flexDirection: "row", alignItems: "flex-start", gap: 8 },
         checkbox: {
@@ -177,7 +176,8 @@ export function TaskCard({
       <View style={styles.headerRow}>
         <Pressable
           accessibilityRole="checkbox"
-          accessibilityState={{ checked: done, disabled: busy }}
+          aria-checked={done}
+          aria-disabled={busy}
           accessibilityLabel={done ? `Reopen ${task.title}` : `Complete ${task.title}`}
           style={styles.checkbox}
           onPress={() => onToggleDone(task)}

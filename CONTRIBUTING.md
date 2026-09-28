@@ -4,10 +4,10 @@ Thank you for your interest in improving Task Manager.
 
 ## Development Workflow
 
-1. Ensure Node.js 20 or newer is installed.
+1. Ensure Node.js 24 or newer is installed.
 2. Install dependencies:
    ```bash
-   npm install
+   npm ci
    ```
 3. Run tests and typechecking:
    ```bash

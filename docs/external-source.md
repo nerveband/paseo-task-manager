@@ -4,10 +4,10 @@ Task Manager supports an optional read-only external task source. When configure
 
 ## Design Constraints
 
-1. External sources are strictly opt-in. By default, no remote source is configured, and no network requests are made.
+1. External sources are strictly opt-in. By default, no external source is configured. Paseo metadata requests still use the connected daemon.
 2. There is no fallback URL and no default endpoint. If a configured source fails, the plugin reports a warning in the board state and continues displaying local tasks.
 3. Credentials inside URLs are rejected. Authentication headers are not forwarded.
-4. Source tasks never overwrite local tasks. If an external record ID collides with a local task ID, the local task takes precedence.
+4. External IDs receive an `ext_` prefix. If that resulting ID collides with a local task ID, the local task takes precedence.
 
 ## Endpoint Contract
 
@@ -43,7 +43,6 @@ The endpoint must return a JSON object with `records` and optional `nextCursor`:
       "notes": "Ensure zero-downtime compatibility",
       "link": "https://example.com/spec/123",
       "priority": 1,
-      "sort": 1,
       "archived": false,
       "prominent": true
     }
@@ -66,13 +65,12 @@ The endpoint must return a JSON object with `records` and optional `nextCursor`:
 | `spec` | string | No | Specification or acceptance criteria text. |
 | `notes` | string | No | Context notes or instructions. |
 | `link` | string | No | Reference link (must use http: or https: scheme). |
-| `priority` | integer | No | Priority level: 0 (urgent), 1 (high), 2 (medium), or 3 (low). Defaults to 2. |
-| `sort` | number | No | Display sorting order within the column. |
+| `priority` | integer | No | Priority: 0 (none), 1 (normal), 2 (high), or 3 (critical). Defaults to 1. |
 | `archived` | boolean | No | Whether the record is archived (default: false). |
 | `prominent` | boolean | No | Whether the card displays a prominent accent border (default: false). |
 
 ## Error Handling
 
-- HTTP status codes other than 200 return a user-visible warning.
+- Unsuccessful HTTP status codes return a user-visible warning. Redirects follow the standard fetch behavior.
 - Network timeouts occur after 10 seconds per request.
-- Pagination terminates after 10 consecutive pages or 1,000 total records to prevent memory exhaustion.
+- At most 10 pages are fetched and 1,000 normalized records retained per refresh.

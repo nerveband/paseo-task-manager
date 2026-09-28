@@ -376,7 +376,7 @@ export function TaskForm({
 
             <Pressable
               accessibilityRole="checkbox"
-              accessibilityState={{ checked: prominent }}
+              aria-checked={prominent}
               accessibilityLabel="Mark task as prominent"
               style={[styles.chip, prominent && styles.chipActive, { marginTop: 10 }]}
               onPress={() => setProminent((value) => !value)}

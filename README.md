@@ -1,144 +1,102 @@
 # Task Manager
 
-Task Manager is a Paseo plugin for user-created task boards with configurable projects, custom stages, and explicit agent launching.
+A Paseo plugin for projects, tasks, custom stages, and explicit agent launching. The repository and runtime plugin ID are `paseo-task-manager`.
 
-![Task Manager Overview](assets/task-manager-overview.png)
+![Task Manager task cards](assets/task-manager-overview.png)
 
 ## Screenshots
 
-| View | Dark Theme | Light Theme |
+These captures render the actual plugin components with sample data in an isolated local preview. The preview uses the real board handlers and temporary storage. Its workspace and provider options are examples; it cannot launch agents. It is not a screenshot of a connected user's Paseo session.
+
+| View | Dark | Light |
 |:--|:--|:--|
-| Board Overview | ![Dark Board](assets/task-manager-overview-dark.png) | ![Light Board](assets/task-manager-overview-light.png) |
-| Dialogs | ![Create Task](assets/task-manager-create-task.png) | ![Agent Launch](assets/task-manager-agent-launch.png) |
-| Compact View | ![Compact View](assets/task-manager-compact.png) | |
+| Task cards | ![Dark board](assets/task-manager-overview-dark.png) | ![Light board](assets/task-manager-overview-light.png) |
+| Compact | ![Compact dark](assets/task-manager-compact-dark.png) | ![Compact light](assets/task-manager-compact-light.png) |
+| Dialogs | ![Create task](assets/task-manager-create-task.png) | ![Launch agent](assets/task-manager-agent-launch.png) |
 
-## Requirements
+## Requirements and installation
 
-- Paseo desktop application or daemon version 0.8.0 or newer.
-- Node.js 20 or newer (for local development and test execution).
+Use Paseo 0.8.0 or newer on both the daemon and the connected client. Local development and screenshot generation use Node.js 24 or newer.
 
-## Recommended Installation
-
-Install the plugin from your local checkout or source directory:
+From this checkout:
 
 ```bash
-paseo plugin install /path/to/paseo-task-manager --id paseo-task-manager
-```
-
-Verify that the plugin is running:
-
-```bash
+npm ci
+npm run check
+paseo plugin install . --id paseo-task-manager
 paseo plugin ls --json
 ```
 
-Reload the plugin after updating local source code:
+Paseo plugins are trusted, unsandboxed code. Install only source you trust. Paseo supplies the runtime SDK modules; the development dependencies support typechecking, tests, and screenshot generation.
+
+## First use
+
+1. Select **New Project** and enter a name. New installations have no projects or tasks.
+2. Select **New Task**, choose a project, and enter a title. Category, stage, priority, owner, due date, specification, notes, and a reference link are available in the form.
+3. Use the project tabs, stage buttons, and search field to filter tasks. **Overview** shows totals and project management controls.
+
+The initial stages are `Todo`, `In progress`, and `Done`. Change their names and order in **Settings**. The last stage represents completion. Removing a stage moves its tasks to the nearest remaining stage.
+
+Deleting a project requires confirmation and also deletes its local tasks. There is no automatic reassignment to another project. Rename and delete project controls are in **Overview**.
+
+## Launch an agent
+
+Select **Agent** on a task card. Choose an existing workspace and an enabled provider/model, then review the task prompt. The plugin creates an agent only when you select **Launch Agent** in that dialog. There is no default workspace, provider, or background agent launch.
+
+## Storage and network access
+
+- Board data is stored on the daemon host in `~/.paseo/plugin-data/paseo-task-manager/board.json`. `preferences.json` and `source.json` hold plugin settings.
+- `PASEO_HOME` changes the Paseo home used for this path. `PASEO_TASK_MANAGER_DATA_DIR` overrides the plugin data directory directly.
+- On POSIX systems, the plugin data directory is mode `0700`; board, settings, and recovery files are mode `0600`.
+- No external task endpoint is configured by default. The plugin queries its connected Paseo daemon for workspace, provider, and agent metadata.
+- An optional external source uses read-only HTTP GET requests. Requests occur when the board loads or refreshes. If the source fails, local tasks remain available and the board shows a warning. See the [external source contract](docs/external-source.md).
+- The plugin needs no administrator privileges or additional credential store.
+
+## Update, removal, and recovery
+
+After updating the source, run:
 
 ```bash
-paseo plugin reload paseo-task-manager --json
+npm ci
+npm run check
+paseo plugin reload paseo-task-manager
 ```
 
-## Empty First Use
+Reloading does not delete board data. Remove the plugin registration with:
 
-When first installed, Task Manager opens with an empty board:
-- No projects exist initially. Create your first project using the **+ New Project** button in the top bar.
-- Board stages default to `Todo`, `In progress`, and `Done`.
-- To create your first task, select your project and click **+ New Task**. Enter a title, select a stage, and optionally assign priority, category, owner, due date, specification notes, or reference links.
+```bash
+paseo plugin remove paseo-task-manager
+```
 
-## Configuration and Defaults
+The data directory remains. Back it up before manually deleting it.
 
-### Stages
+If the board cannot be parsed, the plugin preserves it as `board.corrupt-<timestamp>-<uuid>.json` in the same directory before loading an empty board. An unreadable file or a failed recovery rename raises an error rather than allowing an empty board to overwrite it. To recover, stop editing, keep the backup, repair its JSON, and restore it as `board.json`.
 
-- Default stages are `Todo`, `In progress`, and `Done`.
-- Custom stages can be configured in the **Settings** panel (gear icon). You can add, rename, or reorder stages.
-- The last stage in the list is always treated as the completed stage. Tasks in the final stage count toward the Done total.
-- Removing a stage moves any existing tasks in that stage to the nearest remaining stage so work is never lost.
-
-### Projects
-
-- Projects are user-created names with unique identifiers.
-- Tasks are grouped by project. The project dropdown allows viewing tasks for a specific project or across all projects simultaneously.
-- Deleting a project offers the choice to delete its tasks or reassign them to another project.
-
-### Explicit Agent Launching
-
-Task Manager allows launching Paseo coding agents directly from any task card:
-1. Click **Launch Agent** on a task card.
-2. Select an active Paseo workspace from the workspace dropdown. The plugin queries available workspaces through the Paseo SDK.
-3. Select an enabled provider and model from the provider list.
-4. Review the auto-generated prompt, which incorporates the task title, specification, stage, and reference links.
-5. Click **Launch Agent**. No background agent is created until you explicitly confirm the dialog.
-
-## Data, Network, and Permissions
-
-- **Local Storage**: Board data is stored on disk in `~/.paseo/plugin-data/paseo-task-manager/board.json`. Preferences and source configuration are stored in `preferences.json` and `source.json` in the same directory.
-- **Network Requests**: The plugin operates entirely offline by default. No unsolicited outbound network requests are made.
-- **Optional External Source**: If you configure an external task endpoint in Settings, the plugin issues read-only HTTP GET requests to that specific endpoint. See [External Task Source Documentation](docs/external-source.md) for the wire schema.
-- **Permissions**: The plugin runs within Paseo's local plugin runtime. It does not require special system privileges or external credentials.
-
-## Update and Removal Retention
-
-- To update the plugin, pull new changes and run `paseo plugin reload paseo-task-manager`.
-- Updating the plugin code does not touch your stored board data in `~/.paseo/plugin-data/paseo-task-manager/`.
-- To remove the plugin without deleting board data:
-  ```bash
-  paseo plugin remove paseo-task-manager
-  ```
-- To completely delete board data, manually remove the plugin data directory:
-  ```bash
-  rm -rf ~/.paseo/plugin-data/paseo-task-manager
-  ```
-
-## Troubleshooting
-
-### Plugin Fails to Load
-
-Inspect the plugin logs for runtime errors:
+For load failures:
 
 ```bash
 paseo plugin logs paseo-task-manager --json
-```
-
-Verify that the plugin path exists and dependencies are intact:
-
-```bash
-npm run typecheck
-npm test
-```
-
-### Board File Recovery
-
-If the board JSON file is corrupted, Task Manager moves the damaged file aside to `board.damaged.<timestamp>.json` and initializes a fresh board structure to prevent data loss. Check your data directory for damaged backups:
-
-```bash
-ls -la ~/.paseo/plugin-data/paseo-task-manager/
-```
-
-## Development and Screenshot Reproduction
-
-Run the unit test suite:
-
-```bash
-npm test
-```
-
-Run TypeScript verification:
-
-```bash
 npm run typecheck
 ```
 
-Run repository verification (package, docs, and secrets check):
+## Development and release preparation
 
 ```bash
+npm run check
 npm run verify
-```
-
-Regenerate synthetic screenshots using Puppeteer:
-
-```bash
 node scripts/generate-screenshots.js
 ```
 
-## License and Support
+Screenshot generation bundles `client/board-view.tsx` and its child components through React Native Web. It does not use a separate HTML drawing. The temporary data directory is removed when capture ends.
 
-Distributed under the MIT License. See [LICENSE](LICENSE) for details. For issues or feature proposals, open an issue using the templates in [.github/ISSUE_TEMPLATE](.github/ISSUE_TEMPLATE).
+`npm run verify` checks package identity, full semver validity, lockfile versions, the current changelog entry, local documentation links, and selected credential/path patterns. A passing scan is not proof that all private data has been removed. Review publication files and images as well.
+
+The **Release PR** workflow is manually dispatched, requires release notes, and defaults to a dry run. A non-dry run prepares versions and a changelog entry in a review pull request. It does not publish, deploy, or change repository visibility. To prepare a local version without Git mutations:
+
+```bash
+RELEASE_NOTES='Describe the user-visible changes.' node scripts/prepare-release.mjs patch
+```
+
+## License and support
+
+[MIT License](LICENSE). Use the [issue templates](.github/ISSUE_TEMPLATE) for bugs or feature requests. See [SECURITY.md](SECURITY.md) for security reporting.

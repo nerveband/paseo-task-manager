@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
- * Fails when a file that would be published contains a credential, a real home
- * directory path, or a private network address. Patterns are reported by name
- * only; the matched text is never printed.
+ * Checks publication text, including lockfiles, for selected credential formats,
+ * real home paths, and private network addresses. This does not replace review.
+ * Findings name the pattern only; matched text is never printed.
  */
 
 import { readdirSync, readFileSync, statSync } from "node:fs";
@@ -58,8 +58,8 @@ const RULES = [
   },
 ];
 
-/** Lockfiles and vendored manifests are third-party content, not our prose. */
-const SKIP_FILES = new Set(["package-lock.json", "pnpm-lock.yaml", "yarn.lock", "check-secrets.mjs"]);
+/** Exclude the scanner itself because its detection patterns are intentional. */
+const SKIP_FILES = new Set(["check-secrets.mjs"]);
 
 function* walk(directory) {
   for (const entry of readdirSync(directory)) {
@@ -78,7 +78,7 @@ const findings = [];
 for (const filePath of walk(ROOT)) {
   const relative = path.relative(ROOT, filePath);
   if (SKIP_FILES.has(path.basename(filePath))) continue;
-  if (filePath.endsWith('.png') || filePath.endsWith('.ico') || filePath.endsWith('.jpg')) continue;
+  if (/\.(?:png|jpe?g|webp|gif|ico|woff2?|ttf)$/i.test(filePath)) continue;
   let contents;
   try {
     contents = readFileSync(filePath, "utf8");

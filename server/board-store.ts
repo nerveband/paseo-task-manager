@@ -1,4 +1,5 @@
-import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
+import { chmodSync, existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import os from "node:os";
 import path from "node:path";
 import {
@@ -48,11 +49,13 @@ export interface PluginState {
 export function resolveDataDir(env: NodeJS.ProcessEnv = process.env): string {
   const override = typeof env[DATA_DIR_ENV] === "string" ? env[DATA_DIR_ENV].trim() : "";
   if (override) return path.resolve(override);
-  return path.join(os.homedir(), ".paseo", "plugin-data", RUNTIME_ID);
+  return path.join(env.PASEO_HOME || path.join(os.homedir(), ".paseo"), "plugin-data", RUNTIME_ID);
 }
 
 function readJsonFile(filePath: string): unknown {
   if (!existsSync(filePath)) return null;
+  chmodSync(path.dirname(filePath), 0o700);
+  chmodSync(filePath, 0o600);
   try {
     return JSON.parse(readFileSync(filePath, "utf8"));
   } catch {
@@ -61,10 +64,20 @@ function readJsonFile(filePath: string): unknown {
 }
 
 function writeJsonFile(filePath: string, value: unknown): void {
-  mkdirSync(path.dirname(filePath), { recursive: true });
-  const temporaryPath = `${filePath}.tmp`;
-  writeFileSync(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, "utf8");
-  renameSync(temporaryPath, filePath);
+  const directory = path.dirname(filePath);
+  mkdirSync(directory, { recursive: true, mode: 0o700 });
+  chmodSync(directory, 0o700);
+  const temporaryPath = `${filePath}.${randomUUID()}.tmp`;
+  try {
+    writeFileSync(temporaryPath, `${JSON.stringify(value, null, 2)}\n`, {
+      encoding: "utf8",
+      mode: 0o600,
+      flag: "wx",
+    });
+    renameSync(temporaryPath, filePath);
+  } finally {
+    rmSync(temporaryPath, { force: true });
+  }
 }
 
 /**
@@ -75,22 +88,16 @@ export function readBoard(dataDir: string): BoardFile {
   const filePath = path.join(dataDir, BOARD_FILE);
   if (!existsSync(filePath)) return emptyBoard();
 
-  let raw: string;
-  try {
-    raw = readFileSync(filePath, "utf8");
-  } catch {
-    return emptyBoard();
-  }
+  chmodSync(dataDir, 0o700);
+  chmodSync(filePath, 0o600);
+  const raw = readFileSync(filePath, "utf8");
 
   try {
     return parseBoardDocument(JSON.parse(raw));
   } catch {
-    const quarantine = path.join(dataDir, `board.corrupt-${Date.now()}.json`);
-    try {
-      renameSync(filePath, quarantine);
-    } catch {
-      // Leave the file in place when it cannot be moved; the board still loads empty.
-    }
+    const quarantine = path.join(dataDir, `board.corrupt-${Date.now()}-${randomUUID()}.json`);
+    // Do not allow an empty board to replace a file that could not be preserved.
+    renameSync(filePath, quarantine);
     return emptyBoard();
   }
 }

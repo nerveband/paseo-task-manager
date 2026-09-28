@@ -104,7 +104,7 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
     setLoading(true);
     setLoadError(null);
     try {
-      const result = await getBoard({ includeArchived: false });
+      const result = await getBoard({ includeArchived: true });
       setSnapshot(result);
     } catch (error) {
       setLoadError(error instanceof Error ? error.message : String(error));
@@ -197,8 +197,8 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
           backgroundColor: theme.colors.surface0,
         },
         titleRow: {
-          flexDirection: "row",
-          alignItems: "center",
+          flexDirection: compact ? "column" : "row",
+          alignItems: compact ? "stretch" : "center",
           justifyContent: "space-between",
           gap: 8,
           marginBottom: 8,
@@ -567,7 +567,7 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
       ) : null}
       {actionNotice ? <Text style={styles.warning}>{actionNotice}</Text> : null}
 
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6 }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6, flexGrow: 0, flexShrink: 0 }}>
         <View style={styles.tabRow}>
           <Pressable
             accessibilityRole="button"
@@ -743,7 +743,7 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
               ))}
               <Pressable
                 accessibilityRole="checkbox"
-                accessibilityState={{ checked: showArchived }}
+                aria-checked={showArchived}
                 accessibilityLabel="Include archived tasks"
                 style={[styles.chip, showArchived && styles.chipActive]}
                 onPress={() => setShowArchived((value) => !value)}
