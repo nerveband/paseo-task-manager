@@ -14,7 +14,7 @@ import {
   TextInput,
   View,
 } from "react-native";
-import type { Task } from "../shared/board-model";
+import type { Project, Task } from "../shared/board-model";
 import { doneStageOf, filterTasks } from "../shared/board-model";
 import type { BoardSnapshot, MutationResult } from "../shared/board-rpc";
 import {
@@ -145,6 +145,7 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
   const stages = snapshot?.stages ?? [];
   const doneStage = doneStageOf(stages);
   const tasks = snapshot?.tasks ?? [];
+  const activeProject = projects.find((project) => project.id === activeProjectId);
 
   const projectNameById = useMemo(() => {
     const map: Record<string, string> = {};
@@ -220,6 +221,7 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
           borderColor: theme.colors.border,
         },
         buttonText: { fontSize: 11, fontWeight: "600", color: theme.colors.foregroundMuted },
+        dangerButtonText: { fontSize: 11, fontWeight: "600", color: theme.colors.statusDanger },
         primaryButton: {
           paddingHorizontal: 10,
           paddingVertical: compact ? 7 : 5,
@@ -465,6 +467,26 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
     }
   };
 
+  const openRenameProject = (project: Project) => {
+    setProjectForm({ visible: true, projectId: project.id });
+    setProjectNameDraft(project.name);
+    setFormError(null);
+  };
+
+  const requestDeleteProject = (project: Project) => {
+    const total = snapshot?.summary.byProject.find((entry) => entry.projectId === project.id)?.total ?? 0;
+    setPendingDelete({
+      kind: "project",
+      id: project.id,
+      title: `Delete "${project.name}"?`,
+      message:
+        total > 0
+          ? `${total} task${total === 1 ? "" : "s"} in this project will be deleted as well.`
+          : "This project has no tasks.",
+      deleteTasks: total > 0,
+    });
+  };
+
   const confirmDelete = async () => {
     if (!pendingDelete) return;
     setSubmitting(true);
@@ -481,6 +503,9 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
         setActionNotice(error);
       } else {
         setActionNotice(null);
+        if (pendingDelete.kind === "project" && activeProjectId === pendingDelete.id) {
+          setActiveProjectId("all");
+        }
       }
     } catch (error) {
       setActionNotice(error instanceof Error ? error.message : String(error));
@@ -716,11 +741,7 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
                   accessibilityRole="button"
                   accessibilityLabel={`Rename ${project.name}`}
                   style={styles.button}
-                  onPress={() => {
-                    setProjectForm({ visible: true, projectId: project.id });
-                    setProjectNameDraft(project.name);
-                    setFormError(null);
-                  }}
+                  onPress={() => openRenameProject(project)}
                 >
                   <Text style={styles.buttonText}>Rename</Text>
                 </Pressable>
@@ -728,18 +749,7 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
                   accessibilityRole="button"
                   accessibilityLabel={`Delete ${project.name}`}
                   style={styles.button}
-                  onPress={() =>
-                    setPendingDelete({
-                      kind: "project",
-                      id: project.id,
-                      title: `Delete "${project.name}"?`,
-                      message:
-                        (summary?.total ?? 0) > 0
-                          ? `${summary?.total} task${summary?.total === 1 ? "" : "s"} in this project will be deleted as well.`
-                          : "This project has no tasks.",
-                      deleteTasks: (summary?.total ?? 0) > 0,
-                    })
-                  }
+                  onPress={() => requestDeleteProject(project)}
                 >
                   <Text style={styles.buttonText}>Delete</Text>
                 </Pressable>
@@ -769,6 +779,27 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
         </View>
       ) : (
         <>
+          {activeProject ? (
+            <View style={[styles.buttonRow, { alignItems: "center", marginBottom: 8 }]}>
+              <Text style={styles.projectMeta}>Project: {activeProject.name}</Text>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Rename ${activeProject.name}`}
+                style={styles.button}
+                onPress={() => openRenameProject(activeProject)}
+              >
+                <Text style={styles.buttonText}>Rename Project</Text>
+              </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel={`Delete ${activeProject.name}`}
+                style={styles.button}
+                onPress={() => requestDeleteProject(activeProject)}
+              >
+                <Text style={styles.dangerButtonText}>Delete Project</Text>
+              </Pressable>
+            </View>
+          ) : null}
           <View style={styles.toolbar}>
             <TextInput
               style={styles.search}

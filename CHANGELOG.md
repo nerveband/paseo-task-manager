@@ -9,6 +9,7 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ### Added
 
 - Archive and Restore actions on every task card, and an "Archive done" toolbar action that archives completed tasks in the current project or across the board in one write.
+- Rename Project and Delete Project actions on each project's own tab, in addition to the Overview list. Deleting the open project returns the board to All Tasks.
 
 ### Fixed
 
