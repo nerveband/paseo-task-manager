@@ -9,11 +9,12 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 ### Added
 
 - Archive and Restore actions on every task card, and an "Archive done" toolbar action that archives completed tasks in the current project or across the board in one write.
-- Rename Project and Delete Project actions on each project's own tab, in addition to the Overview list. Deleting the open project returns the board to All Tasks.
+- A Projects section in Task Manager Settings to add, rename, and delete projects, plus Rename Project and Delete Project actions on each project's own tab. Deleting the open project returns the board to All Tasks.
 
 ### Fixed
 
 - A newly created task is revealed after saving: filters that would hide it are cleared, the board scrolls to its card, and the card is labeled "Just added".
+- Saving one Settings section no longer discards unsaved edits in another section.
 - Toolbar stage filters wrap at desktop widths instead of overflowing past the edge of the surface.
 
 ## [1.0.0] - 2026-09-14

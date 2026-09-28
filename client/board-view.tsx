@@ -515,30 +515,34 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
     }
   };
 
-  const submitProjectForm = async () => {
-    const name = projectNameDraft.trim();
+  /** Creates a project when projectId is null, otherwise renames it. Returns true on success. */
+  const saveProject = async (projectId: string | null, rawName: string): Promise<boolean> => {
+    const name = rawName.trim();
     if (!name) {
       setFormError("A project name is required.");
-      return;
+      return false;
     }
     setSubmitting(true);
+    setFormError(null);
     try {
-      const result = projectForm.projectId
-        ? await renameProject({ projectId: projectForm.projectId, name })
+      const result = projectId
+        ? await renameProject({ projectId, name })
         : await createProject({ name });
       const error = applyResult(result);
-      if (error) {
-        setFormError(error);
-        return;
-      }
-      setProjectForm({ visible: false, projectId: null });
-      setProjectNameDraft("");
-      setFormError(null);
+      setFormError(error);
+      return error === null;
     } catch (error) {
       setFormError(error instanceof Error ? error.message : String(error));
+      return false;
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const submitProjectForm = async () => {
+    if (!(await saveProject(projectForm.projectId, projectNameDraft))) return;
+    setProjectForm({ visible: false, projectId: null });
+    setProjectNameDraft("");
   };
 
   const launchAgent = async (choice: { workspaceId: string; provider: string }) => {
@@ -966,6 +970,8 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
         errorMessage={formError}
         notice={actionNotice}
         onClose={() => setSettingsVisible(false)}
+        onSaveProject={(projectId, name) => void saveProject(projectId, name)}
+        onDeleteProject={requestDeleteProject}
         onSaveStages={(nextStages) => {
           setSubmitting(true);
           void (async () => {

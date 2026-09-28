@@ -23,6 +23,9 @@ interface SettingsPanelProps {
   errorMessage?: string | null;
   notice?: string | null;
   onClose: () => void;
+  /** Creates a project when projectId is null, otherwise renames it. */
+  onSaveProject: (projectId: string | null, name: string) => void;
+  onDeleteProject: (project: Project) => void;
   onSaveStages: (stages: string[]) => void;
   onSaveSource: (url: string | null, projectId: string | null) => void;
 }
@@ -38,6 +41,8 @@ export function SettingsPanel({
   errorMessage = null,
   notice = null,
   onClose,
+  onSaveProject,
+  onDeleteProject,
   onSaveStages,
   onSaveSource,
 }: SettingsPanelProps) {
@@ -47,14 +52,27 @@ export function SettingsPanel({
   const [sourceProjectId, setSourceProjectId] = useState<string>(
     source.projectId ?? projects[0]?.id ?? "",
   );
+  const [projectNames, setProjectNames] = useState<Record<string, string>>({});
+  const [newProject, setNewProject] = useState("");
 
+  // Each section resets only from its own inputs, so saving one never discards unsaved edits in another.
   useEffect(() => {
     if (!visible) return;
     setDraftStages(stages);
     setNewStage("");
+  }, [visible, stages]);
+
+  useEffect(() => {
+    if (!visible) return;
     setSourceUrl(source.url ?? "");
     setSourceProjectId(source.projectId ?? projects[0]?.id ?? "");
-  }, [visible, stages, source.url, source.projectId, projects]);
+  }, [visible, source.url, source.projectId, projects]);
+
+  useEffect(() => {
+    if (!visible) return;
+    setProjectNames(Object.fromEntries(projects.map((project) => [project.id, project.name])));
+    setNewProject("");
+  }, [visible, projects]);
 
   const styles = useMemo(
     () =>
@@ -164,6 +182,64 @@ export function SettingsPanel({
         <View style={styles.box}>
           <Text style={styles.heading}>Task Manager Settings</Text>
           <ScrollView showsVerticalScrollIndicator={false}>
+            <Text style={styles.sectionTitle}>Projects</Text>
+            <Text style={styles.help}>
+              Projects group tasks on this board. Renaming keeps every task in place. Deleting a
+              project also deletes its tasks.
+            </Text>
+            {projects.map((project) => {
+              const draft = projectNames[project.id] ?? project.name;
+              const unchanged = draft.trim() === project.name || draft.trim() === "";
+              return (
+                <View style={styles.stageRow} key={project.id}>
+                  <TextInput
+                    style={styles.input}
+                    value={draft}
+                    onChangeText={(value) => setProjectNames({ ...projectNames, [project.id]: value })}
+                    accessibilityLabel={`Name for project ${project.name}`}
+                  />
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Save the name of ${project.name}`}
+                    accessibilityState={{ disabled: unchanged || saving }}
+                    style={[styles.small, (unchanged || saving) && { opacity: 0.5 }]}
+                    onPress={() => onSaveProject(project.id, draft)}
+                    disabled={unchanged || saving}
+                  >
+                    <Text style={styles.smallText}>Rename</Text>
+                  </Pressable>
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={`Delete project ${project.name}`}
+                    style={styles.small}
+                    onPress={() => onDeleteProject(project)}
+                    disabled={saving}
+                  >
+                    <Text style={[styles.smallText, { color: theme.colors.statusDanger }]}>Delete</Text>
+                  </Pressable>
+                </View>
+              );
+            })}
+            <View style={styles.row}>
+              <TextInput
+                style={styles.input}
+                value={newProject}
+                onChangeText={setNewProject}
+                placeholder="Add a project"
+                placeholderTextColor={theme.colors.foregroundMuted}
+                accessibilityLabel="New project name"
+              />
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Add a task board project"
+                style={styles.primaryButton}
+                onPress={() => onSaveProject(null, newProject)}
+                disabled={saving || newProject.trim() === ""}
+              >
+                <Text style={styles.primaryText}>Add Project</Text>
+              </Pressable>
+            </View>
+
             <Text style={styles.sectionTitle}>Stages</Text>
             <Text style={styles.help}>
               Stages belong to this board. The last stage counts as done. Removing a stage moves its
