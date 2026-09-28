@@ -4,6 +4,7 @@ import {
   Task,
   createProjectRecord,
   createTaskRecord,
+  doneStageOf,
   filterTasks,
   sanitizeLink,
   sanitizeProjectName,
@@ -256,6 +257,33 @@ export async function deleteTaskHandler(
     return failure("That task is not on this board. External tasks are read-only.");
   }
   const tasks = board.tasks.filter((task) => task.id !== input.taskId);
+  return finishMutation(dataDir, { ...board, tasks }, context);
+}
+
+/**
+ * Archives every completed local task, optionally within one project, in one
+ * board write. Archiving is reversible through updateTaskHandler.
+ */
+export async function archiveDoneHandler(
+  input: { projectId?: string },
+  context: PluginHandlerContext,
+): Promise<MutationResult> {
+  const dataDir = resolveDataDir();
+  const { board } = readPluginState(dataDir);
+
+  if (input.projectId !== undefined && !isExistingProject(board, input.projectId)) {
+    return failure("That project is not on this board.");
+  }
+  const done = doneStageOf(board.stages);
+  const now = new Date().toISOString();
+  let archivedCount = 0;
+  const tasks = board.tasks.map((task) => {
+    if (task.archived || task.stage !== done) return task;
+    if (input.projectId !== undefined && task.projectId !== input.projectId) return task;
+    archivedCount += 1;
+    return { ...task, archived: true, updatedAt: now };
+  });
+  if (archivedCount === 0) return failure("There are no completed tasks to archive.");
   return finishMutation(dataDir, { ...board, tasks }, context);
 }
 

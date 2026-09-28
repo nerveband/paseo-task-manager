@@ -3,7 +3,7 @@ import type {
   PluginWorkspacePanelProps,
 } from "@getpaseo/plugin/client";
 import { usePaseo, useRpc } from "@getpaseo/plugin/client";
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -18,6 +18,7 @@ import type { Task } from "../shared/board-model";
 import { doneStageOf, filterTasks } from "../shared/board-model";
 import type { BoardSnapshot, MutationResult } from "../shared/board-rpc";
 import {
+  archiveDoneRpc,
   createProjectRpc,
   createTaskRpc,
   deleteProjectRpc,
@@ -61,6 +62,7 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
   const createTask = useRpc(createTaskRpc);
   const updateTask = useRpc(updateTaskRpc);
   const deleteTask = useRpc(deleteTaskRpc);
+  const archiveDone = useRpc(archiveDoneRpc);
   const createProject = useRpc(createProjectRpc);
   const renameProject = useRpc(renameProjectRpc);
   const deleteProject = useRpc(deleteProjectRpc);
@@ -92,6 +94,9 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
   const [actionNotice, setActionNotice] = useState<string | null>(null);
+  const [boardNotice, setBoardNotice] = useState<string | null>(null);
+  const [revealTaskId, setRevealTaskId] = useState<string | null>(null);
+  const listRef = useRef<ScrollView>(null);
   const [cardMessages, setCardMessages] = useState<Record<string, string>>({});
   const [cardErrors, setCardErrors] = useState<Record<string, string>>({});
 
@@ -130,6 +135,7 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
   const applyResult = useCallback((result: MutationResult): string | null => {
     if (result.success && result.snapshot) {
       setSnapshot(result.snapshot);
+      setBoardNotice(null);
       return null;
     }
     return result.error ?? "The change was rejected.";
@@ -243,6 +249,7 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
         },
         search: {
           flex: compact ? undefined : 1,
+          minWidth: compact ? undefined : 180,
           minHeight: 34,
           borderRadius: 6,
           borderWidth: 1,
@@ -253,7 +260,7 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
           fontSize: 12,
           backgroundColor: theme.colors.surface0,
         },
-        chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6 },
+        chipRow: { flexDirection: "row", flexWrap: "wrap", gap: 6, flexShrink: 1 },
         chip: {
           paddingHorizontal: 8,
           paddingVertical: 5,
@@ -363,6 +370,20 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
         setFormError(error);
         return;
       }
+      if (!editingTask && result.snapshot) {
+        // A new task sorts among many others; clear filters that would hide it and scroll to it.
+        const knownIds = new Set(tasks.map((task) => task.id));
+        const added = result.snapshot.tasks.find((task) => !knownIds.has(task.id));
+        if (added) {
+          setSearchQuery("");
+          setStageFilter("all");
+          if (activeProjectId !== "all" && activeProjectId !== added.projectId) {
+            setActiveProjectId(added.projectId);
+          }
+          setCardMessages((prev) => ({ ...prev, [added.id]: "Just added" }));
+          setRevealTaskId(added.id);
+        }
+      }
       setTaskFormVisible(false);
       setEditingTask(null);
     } catch (error) {
@@ -400,6 +421,47 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
         ...prev,
         [task.id]: error instanceof Error ? error.message : String(error),
       }));
+    }
+  };
+
+  const toggleArchive = async (task: Task) => {
+    setCardErrors((prev) => ({ ...prev, [task.id]: "" }));
+    try {
+      const result = await updateTask({ taskId: task.id, archived: !task.archived });
+      const error = applyResult(result);
+      if (error) {
+        setCardErrors((prev) => ({ ...prev, [task.id]: error }));
+      } else if (!task.archived) {
+        setBoardNotice(`Archived "${task.title}". Turn on the Archived filter to restore it.`);
+      }
+    } catch (error) {
+      setCardErrors((prev) => ({
+        ...prev,
+        [task.id]: error instanceof Error ? error.message : String(error),
+      }));
+    }
+  };
+
+  const archiveCompleted = async () => {
+    const count = stagesInView.done;
+    setSubmitting(true);
+    try {
+      const result = await archiveDone({
+        projectId: activeProjectId === "all" || activeProjectId === "overview" ? undefined : activeProjectId,
+      });
+      const error = applyResult(result);
+      if (error) {
+        setActionNotice(error);
+      } else {
+        setActionNotice(null);
+        setBoardNotice(
+          `Archived ${count} completed task${count === 1 ? "" : "s"}. Turn on the Archived filter to restore them.`,
+        );
+      }
+    } catch (error) {
+      setActionNotice(error instanceof Error ? error.message : String(error));
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -566,6 +628,7 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
         <Text style={styles.warning}>{snapshot.source.warnings.join(" ")}</Text>
       ) : null}
       {actionNotice ? <Text style={styles.warning}>{actionNotice}</Text> : null}
+      {boardNotice ? <Text style={styles.warning}>{boardNotice}</Text> : null}
 
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 6, flexGrow: 0, flexShrink: 0 }}>
         <View style={styles.tabRow}>
@@ -752,6 +815,16 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
                   Archived
                 </Text>
               </Pressable>
+              <Pressable
+                accessibilityRole="button"
+                accessibilityLabel="Archive every completed task in this view"
+                accessibilityState={{ disabled: stagesInView.done === 0 || submitting }}
+                style={[styles.chip, (stagesInView.done === 0 || submitting) && { opacity: 0.5 }]}
+                onPress={() => void archiveCompleted()}
+                disabled={stagesInView.done === 0 || submitting}
+              >
+                <Text style={styles.chipText}>Archive done ({stagesInView.done})</Text>
+              </Pressable>
             </View>
           </View>
 
@@ -763,7 +836,7 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
               </Text>
             </View>
           ) : (
-            <ScrollView showsVerticalScrollIndicator={false}>
+            <ScrollView ref={listRef} showsVerticalScrollIndicator={false}>
               <View style={styles.grid}>
                 {visibleTasks.map((task) => (
                   <TaskCard
@@ -787,6 +860,18 @@ export function BoardView({ theme, layout, navigation, workspaceId }: BoardViewP
                         title: `Delete "${target.title}"?`,
                         message: "The task is removed from this board permanently.",
                       })
+                    }
+                    onToggleArchive={(target) => void toggleArchive(target)}
+                    onLayout={
+                      task.id === revealTaskId
+                        ? (event) => {
+                            listRef.current?.scrollTo({
+                              y: Math.max(0, event.nativeEvent.layout.y - 8),
+                              animated: true,
+                            });
+                            setRevealTaskId(null);
+                          }
+                        : undefined
                     }
                     onLaunchAgent={(target) => {
                       setLaunchTask(target);

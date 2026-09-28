@@ -1,5 +1,6 @@
 import type { PluginServerContext } from "@getpaseo/plugin/server";
 import {
+  archiveDoneRpc,
   createProjectRpc,
   createTaskRpc,
   deleteProjectRpc,
@@ -14,6 +15,7 @@ import {
   updateTaskRpc,
 } from "./shared/board-rpc";
 import {
+  archiveDoneHandler,
   createProjectHandler,
   createTaskHandler,
   deleteProjectHandler,
@@ -38,6 +40,7 @@ export default function contribute(server: PluginServerContext): () => void {
   server.handle(createTaskRpc, createTaskHandler);
   server.handle(updateTaskRpc, updateTaskHandler);
   server.handle(deleteTaskRpc, deleteTaskHandler);
+  server.handle(archiveDoneRpc, archiveDoneHandler);
   server.handle(searchTasksRpc, searchTasksHandler);
   server.handle(createProjectRpc, createProjectHandler);
   server.handle(renameProjectRpc, renameProjectHandler);

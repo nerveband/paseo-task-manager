@@ -4,6 +4,17 @@ All notable changes to Task Manager will be documented in this file.
 
 The format is based on Keep a Changelog, and this project adheres to Semantic Versioning.
 
+## [Unreleased]
+
+### Added
+
+- Archive and Restore actions on every task card, and an "Archive done" toolbar action that archives completed tasks in the current project or across the board in one write.
+
+### Fixed
+
+- A newly created task is revealed after saving: filters that would hide it are cleared, the board scrolls to its card, and the card is labeled "Just added".
+- Toolbar stage filters wrap at desktop widths instead of overflowing past the edge of the surface.
+
 ## [1.0.0] - 2026-09-14
 
 ### Added

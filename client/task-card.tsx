@@ -1,6 +1,6 @@
 import type { PluginTheme } from "@getpaseo/plugin";
 import React, { useMemo } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
 import { doneStageOf } from "../shared/board-model";
 import type { Task } from "../shared/board-model";
 
@@ -24,8 +24,10 @@ interface TaskCardProps {
   onAdvanceStage: (task: Task) => void;
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
+  onToggleArchive: (task: Task) => void;
   onLaunchAgent: (task: Task) => void;
   onOpenAgent?: (task: Task) => void;
+  onLayout?: (event: LayoutChangeEvent) => void;
 }
 
 export function TaskCard({
@@ -43,8 +45,10 @@ export function TaskCard({
   onAdvanceStage,
   onEdit,
   onDelete,
+  onToggleArchive,
   onLaunchAgent,
   onOpenAgent,
+  onLayout,
 }: TaskCardProps) {
   const done = task.stage === doneStageOf(stages);
 
@@ -172,7 +176,7 @@ export function TaskCard({
   );
 
   return (
-    <View style={styles.card}>
+    <View style={styles.card} onLayout={onLayout}>
       <View style={styles.headerRow}>
         <Pressable
           accessibilityRole="checkbox"
@@ -209,6 +213,11 @@ export function TaskCard({
         {task.prominent && !done ? (
           <View style={styles.prominentBadge}>
             <Text style={styles.prominentText}>PROMINENT</Text>
+          </View>
+        ) : null}
+        {task.archived ? (
+          <View style={styles.badge}>
+            <Text style={styles.badgeText}>Archived</Text>
           </View>
         ) : null}
       </View>
@@ -249,6 +258,15 @@ export function TaskCard({
             disabled={busy}
           >
             <Text style={styles.buttonText}>Edit</Text>
+          </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={task.archived ? `Restore ${task.title}` : `Archive ${task.title}`}
+            style={styles.button}
+            onPress={() => onToggleArchive(task)}
+            disabled={busy}
+          >
+            <Text style={styles.buttonText}>{task.archived ? "Restore" : "Archive"}</Text>
           </Pressable>
           <Pressable
             accessibilityRole="button"

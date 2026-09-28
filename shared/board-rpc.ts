@@ -105,6 +105,12 @@ export const deleteTaskRpc = defineRpc({
   output: MutationResultSchema,
 });
 
+export const archiveDoneRpc = defineRpc({
+  name: "task-manager.archive-done",
+  input: z.object({ projectId: z.string().min(1).optional() }),
+  output: MutationResultSchema,
+});
+
 export const searchTasksRpc = defineRpc({
   name: "task-manager.search-tasks",
   input: z.object({ query: z.string() }),
