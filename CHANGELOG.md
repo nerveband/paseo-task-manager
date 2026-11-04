@@ -11,6 +11,10 @@ The format is based on Keep a Changelog, and this project adheres to Semantic Ve
 - Archive and Restore actions on every task card, and an "Archive done" toolbar action that archives completed tasks in the current project or across the board in one write.
 - A Projects section in Task Manager Settings to add, rename, and delete projects, plus Rename Project and Delete Project actions on each project's own tab. Deleting the open project returns the board to All Tasks.
 
+### Changed
+
+- Requires Paseo 0.15.0. The board registers with `addScreen` and `addSidebarHeaderItem` instead of the deprecated `addSurface` and `addSidebarItem`.
+
 ### Fixed
 
 - A newly created task is revealed after saving: filters that would hide it are cleared, the board scrolls to its card, and the card is labeled "Just added".

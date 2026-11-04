@@ -1,27 +1,38 @@
-import type { PluginClientContext } from "@getpaseo/plugin/client";
+import type { PluginClientContext, PluginSidebarItemProps } from "@getpaseo/plugin/client";
+import { SidebarRow } from "@getpaseo/plugin/client/ui";
 import { BoardPanel, BoardSurface } from "./client/board-view";
 import { boardAttachmentSource } from "./shared/board-rpc";
 
+const BOARD_SCREEN_ID = "task-manager-board";
+
+function TaskManagerItem({ currentScreen, openScreen }: PluginSidebarItemProps) {
+  return (
+    <SidebarRow
+      icon="CheckSquare"
+      active={currentScreen?.screenId === BOARD_SCREEN_ID}
+      onPress={() => openScreen({ screenId: BOARD_SCREEN_ID })}
+    />
+  );
+}
+
 /**
- * Registers the client half of the plugin: one board surface, one workspace
+ * Registers the client half of the plugin: one board screen, one workspace
  * panel, one command center entry, and a task attachment source for the
  * message composer.
  */
 export default function contribute(client: PluginClientContext): () => void {
-  client.addSurface("task-manager-board", BoardSurface);
+  client.addScreen({ id: BOARD_SCREEN_ID, title: "Task Manager", Component: BoardSurface });
 
-  client.addSidebarItem({
+  client.addSidebarHeaderItem({
     id: "task-manager",
     title: "Task Manager",
-    icon: "CheckSquare",
-    surface: "task-manager-board",
+    Component: TaskManagerItem,
   });
 
   client.addWorkspacePanel({
     id: "task-manager",
     title: "Tasks",
     icon: "ListTodo",
-    context: "workspace",
     Component: BoardPanel,
   });
 
@@ -31,8 +42,8 @@ export default function contribute(client: PluginClientContext): () => void {
     icon: "LayoutDashboard",
     keywords: ["tasks", "board", "projects", "todo"],
     context: "global",
-    onSelect({ openSurface }) {
-      openSurface("task-manager-board");
+    onSelect({ openScreen }) {
+      openScreen({ screenId: BOARD_SCREEN_ID });
     },
   });
 

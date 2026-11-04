@@ -16,7 +16,7 @@ These captures render the actual plugin components with sample data in an isolat
 
 ## Requirements and installation
 
-Use Paseo 0.8.0 or newer on both the daemon and the connected client. Local development and screenshot generation use Node.js 24 or newer.
+Use Paseo 0.15.0 or newer on both the daemon and the connected client. Local development and screenshot generation use Node.js 24 or newer.
 
 From this checkout:
 
